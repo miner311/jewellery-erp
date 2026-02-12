@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Jewellery ERP Cloud</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body { font-family: Arial; padding:20px; }
+input, select, button { margin:5px; padding:5px; }
+table { border-collapse: collapse; margin-top:20px; }
+th, td { border:1px solid #ccc; padding:6px; }
+</style>
+</head>
+<body>
+
+<h2>Jewellery ERP - Cloud Version</h2>
+
+<h3>Add Party</h3>
+<input type="text" id="partyName" placeholder="Party Name">
+<input type="number" id="openingBalance" placeholder="Opening Balance">
+<button onclick="addParty()">Add Party</button>
+
+<h3>Add Entry</h3>
+<input type="date" id="date">
+<select id="partySelect"></select>
+<select id="type">
+<option value="issue">Issue</option>
+<option value="receipt">Receipt</option>
+</select>
+<input type="number" id="gross" placeholder="Gross Weight">
+<input type="number" id="purity" placeholder="Purity %">
+<input type="number" id="melting" placeholder="Melting %">
+<input type="number" id="wastage" placeholder="Wastage %">
+<button onclick="addEntry()">Save Entry</button>
+
+<h3>Entries</h3>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Party</th>
+<th>Type</th>
+<th>Gross</th>
+<th>Fine</th>
+<th>Net Fine</th>
+</tr>
+</thead>
+<tbody id="entriesTable"></tbody>
+</table>
+
+<script>
+const supabase = window.supabase.createClient(
+"https://rojlvocyqognjidogjus.supabase.co",
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvamx2b2N5cW9nbmppZG9nanVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4ODk2MjcsImV4cCI6MjA4NjQ2NTYyN30.Q7sIQPt0UCgkRE6j1RjRwe9rM5ce_VM7LOTIw5nMWm4"
+);
+
+async function loadParties() {
+const { data } = await supabase.from("parties").select("*");
+const select = document.getElementById("partySelect");
+select.innerHTML = "";
+data.forEach(p => {
+const option = document.createElement("option");
+option.value = p.id;
+option.textContent = p.name;
+select.appendChild(option);
+});
+}
+
+async function addParty() {
+const name = document.getElementById("partyName").value;
+const opening = document.getElementById("openingBalance").value || 0;
+await supabase.from("parties").insert([{ name:name, opening_balance:opening }]);
+loadParties();
+alert("Party Added");
+}
+
+async function addEntry() {
+const date = document.getElementById("date").value;
+const party_id = document.getElementById("partySelect").value;
+const type = document.getElementById("type").value;
+const gross = parseFloat(document.getElementById("gross").value) || 0;
+const purity = parseFloat(document.getElementById("purity").value) || 0;
+const melting = parseFloat(document.getElementById("melting").value) || 0;
+const wastage = parseFloat(document.getElementById("wastage").value) || 0;
+
+const fine = gross * (purity/100) * (melting/100);
+const net = fine - (fine * (wastage/100));
+
+await supabase.from("entries").insert([{
+date, party_id, type,
+gross_weight:gross,
+purity, melting_percent:melting,
+wastage_percent:wastage,
+fine_weight:fine,
+net_fine:net
+}]);
+
+alert("Entry Saved");
+loadEntries();
+}
+
+async function loadEntries() {
+const { data } = await supabase
+.from("entries")
+.select("date, type, gross_weight, fine_weight, net_fine, parties(name)");
+
+const table = document.getElementById("entriesTable");
+table.innerHTML = "";
+
+data.forEach(e => {
+const row = `<tr>
+<td>${e.date}</td>
+<td>${e.parties.name}</td>
+<td>${e.type}</td>
+<td>${e.gross_weight}</td>
+<td>${Number(e.fine_weight).toFixed(3)}</td>
+<td>${Number(e.net_fine).toFixed(3)}</td>
+</tr>`;
+table.innerHTML += row;
+});
+}
+
+loadParties();
+loadEntries();
+</script>
+
+</body>
+</html>
